@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 MIT License
 
@@ -29,10 +31,9 @@ from typing import TYPE_CHECKING, Any, List, Optional
 from .enums import UserSearchPlatform, UserSearchMatchType, StatsCollectionType
 from .typedefs import DatetimeOrTimestamp
 from .errors import Forbidden
-from .utils import from_iso
 
 if TYPE_CHECKING:
-    from .client import BasicClient
+    from .client import Client
     from .stats import StatsV2, StatsCollection
 
 log = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class ExternalAuth:
 
     Attributes
     ----------
-    client: :class:`BasicClient`
+    client: :class:`Client`
         The client.
     type: :class:`str`:
         The type/platform of the external auth.
@@ -52,7 +53,7 @@ class ExternalAuth:
     external_id: Optional[:class:`str`]
         The id belonging to this user on the platform. This could in some
         cases be `None`.
-    external_display_name: Optional[:class:`str`]
+    external_display_name: :class:`str`
         The display name belonging to this user on the platform. This could
         in some cases be `None`.
     extra_info: Dict[:class:`str`, Any]
@@ -63,7 +64,7 @@ class ExternalAuth:
     __slots__ = ('client', 'type', 'id', 'external_id',
                  'external_display_name', 'extra_info')
 
-    def __init__(self, client: 'BasicClient', data: dict) -> None:
+    def __init__(self, client: 'Client', data: dict) -> None:
         self.client = client
         self.type = data['type']
         self.id = data['accountId']
@@ -114,9 +115,7 @@ class UserBase:
     __slots__ = ('client', '_epicgames_display_name', '_external_display_name',
                  '_id', '_external_auths')
 
-    def __init__(self, client: 'BasicClient',
-                 data: dict,
-                 **kwargs: Any) -> None:
+    def __init__(self, client: 'Client', data: dict, **kwargs: Any) -> None:
         self.client = client
         if data:
             self._update(data)
@@ -393,7 +392,7 @@ class ClientUser(UserBase):
 
     Attributes
     ----------
-    client: :class:`BasicClient`
+    client: :class:`Client`
         The client.
     age_group: :class:`str`
         The age group of the user.
@@ -436,9 +435,7 @@ class ClientUser(UserBase):
         The minor status of this account.
     """
 
-    def __init__(self, client: 'BasicClient',
-                 data: dict,
-                 **kwargs: Any) -> None:
+    def __init__(self, client: 'Client', data: dict, **kwargs: Any) -> None:
         super().__init__(client, data)
         self._update(data)
 
@@ -463,12 +460,12 @@ class ClientUser(UserBase):
 
     def _update(self, data: dict) -> None:
         super()._update(data)
-        self.name = data['name']
-        self.email = data['email']
+        self.name = data.get("name")
+        self.email = data.get("email")
         self.failed_login_attempts = data['failedLoginAttempts']
-        self.last_failed_login = (from_iso(data['lastFailedLogin'])
+        self.last_failed_login = (self.client.from_iso(data['lastFailedLogin'])
                                   if 'lastFailedLogin' in data else None)
-        self.last_login = (from_iso(data['lastLogin'])
+        self.last_login = (self.client.from_iso(data['lastLogin'])
                            if 'lastLogin' in data else None)
 
         n_changes = data['numberOfDisplayNameChanges']
@@ -476,8 +473,8 @@ class ClientUser(UserBase):
         self.age_group = data['ageGroup']
         self.headless = data['headless']
         self.country = data['country']
-        self.last_name = data['lastName']
-        self.preferred_language = data['preferredLanguage']
+        self.last_name = data.get("lastName")
+        self.preferred_language = data['preferredLanguage'] if data.get("prefferedLanguage") else "en"
         self.can_update_display_name = data['canUpdateDisplayName']
         self.tfa_enabled = data['tfaEnabled']
         self.email_verified = data['emailVerified']
@@ -491,9 +488,7 @@ class User(UserBase):
 
     __slots__ = UserBase.__slots__
 
-    def __init__(self, client: 'BasicClient',
-                 data: dict,
-                 **kwargs: Any) -> None:
+    def __init__(self, client: 'Client', data: dict, **kwargs: Any) -> None:
         super().__init__(client, data)
 
     def __repr__(self) -> str:
@@ -552,7 +547,7 @@ class BlockedUser(UserBase):
 
     __slots__ = UserBase.__slots__
 
-    def __init__(self, client: 'BasicClient', data: dict) -> None:
+    def __init__(self, client: 'Client', data: dict) -> None:
         super().__init__(client, data)
 
     def __repr__(self) -> str:
@@ -582,7 +577,7 @@ class UserSearchEntry(User):
     mutual_friend_count: :class:`int`
         The amount of **epic** mutual friends the client has with the user.
     """
-    def __init__(self, client: 'BasicClient',
+    def __init__(self, client: 'Client',
                  user_data: dict,
                  search_data: dict) -> None:
         super().__init__(client, user_data)
@@ -613,7 +608,7 @@ class SacSearchEntryUser(User):
     verified: :class:`bool`
         Wether or not the creator code is verified or not.
     """
-    def __init__(self, client: 'BasicClient',
+    def __init__(self, client: 'Client',
                  user_data: dict,
                  search_data: dict) -> None:
         super().__init__(client, user_data)
